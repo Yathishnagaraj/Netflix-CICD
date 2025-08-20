@@ -20,12 +20,12 @@ pipeline {
 
         stage('Docker Build & Push') {
             steps {
-                withCredentials([string(credentialsId: 'dockerhub-creds', variable: 'DOCKER_PASS')]) {
-                    sh '''
-                        echo $DOCKER_PASS | docker login -u yathish047 --password-stdin
-                        docker build -t $IMAGE .
-                        docker push $IMAGE
-                    '''
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', 
+                                  usernameVariable: 'DOCKER_USER', 
+                                  passwordVariable: 'DOCKER_PASS')]) {
+                    sh 'docker login -u $DOCKER_USER -p $DOCKER_PASS'
+                    sh 'docker build -t yathish047/netflix:3 .'
+                    sh 'docker push yathish047/netflix:3'
                 }
             }
         }
