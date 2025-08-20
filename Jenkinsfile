@@ -1,31 +1,30 @@
 pipeline {
     agent any
 
+    environment {
+        IMAGE = "yathish047/netflix:3"
+    }
+
     stages {
-        stage('Checkout') {
+        stage('Git Checkout') {
             steps {
-                checkout scm
+                git 'https://github.com/Yathishnagaraj/Netflix-CICD.git'
             }
         }
 
-        stage('Build with Maven') {
+        stage('Maven Build') {
             steps {
-                sh '''
-                  mvn clean package -DskipTests -Dmaven.compiler.source=17 -Dmaven.compiler.target=17
-                '''
+                sh 'mvn clean package'
             }
         }
 
         stage('Docker Build & Push') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds',
-                                                  usernameVariable: 'DOCKER_USER',
-                                                  passwordVariable: 'DOCKER_PASS')]) {
+                withCredentials([string(credentialsId: 'dockerhub-cred', variable: 'DOCKER_PASS')]) {
                     sh '''
-                      echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
-                      IMAGE=${DOCKER_USER}/netflix:3
-                      docker build -t $IMAGE .
-                      docker push $IMAGE
+                        echo $DOCKER_PASS | docker login -u yathish047 --password-stdin
+                        docker build -t $IMAGE .
+                        docker push $IMAGE
                     '''
                 }
             }
@@ -34,17 +33,10 @@ pipeline {
         stage('Run Container') {
             steps {
                 sh '''
-                  docker rm -f netflix || true
-                  IMAGE=yathish047/netflix:3
-                  docker run -d --name netflix -p 8080:8080 $IMAGE
+                    docker rm -f netflix || true
+                    docker run -d --name netflix -p 9090:8080 $IMAGE
                 '''
             }
-        }
-    }
-
-    post {
-        always {
-            cleanWs()
         }
     }
 }
