@@ -1,33 +1,21 @@
 pipeline {
     agent any
-    tools { maven 'maven3' }
-
-    environment {
-        IMAGE_NAME = "netflix"
-    }
 
     stages {
-        stage('Clone') {
+        stage('Checkout') {
             steps {
-                git url: 'https://github.com/Yathishnagaraj/Netflix-CICD.git'
-            }
-        }
-
-        stage('Maven Build') {
-            steps {
-                script {
-                    def mvnHome = tool name: 'maven3', type: 'maven'
-                    sh "${mvnHome}/bin/mvn clean package -DskipTests"
-                }
+                checkout scm
             }
         }
 
         stage('Docker Build & Push') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                withCredentials([usernamePassword(credentialsId: 'dockerhub',
+                                                  usernameVariable: 'DOCKER_USER',
+                                                  passwordVariable: 'DOCKER_PASS')]) {
                     sh '''
-                      echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-                      IMAGE=$DOCKER_USER/$IMAGE_NAME:$BUILD_NUMBER
+                      echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+                      IMAGE=${DOCKER_USER}/netflix:3
                       docker build -t $IMAGE .
                       docker push $IMAGE
                     '''
@@ -39,7 +27,7 @@ pipeline {
             steps {
                 sh '''
                   docker rm -f netflix || true
-                  IMAGE=$DOCKER_USER/$IMAGE_NAME:$BUILD_NUMBER
+                  IMAGE=yathish047/netflix:3
                   docker run -d --name netflix -p 8080:8080 $IMAGE
                 '''
             }
