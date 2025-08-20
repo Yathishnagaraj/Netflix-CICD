@@ -1,0 +1,46 @@
+name: CI - Maven build, DockerHub push
+
+on:
+  push:
+    branches: [ "main" ]
+    tags: [ "*" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    env:
+      IMAGE_NAME: netflix
+      DOCKERHUB_REPO: ${{ secrets.DOCKERHUB_USERNAME }}/netflix
+      TAG: ${{ github.run_number }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17 (Temurin) with Maven cache
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Build with Maven (skip tests)
+        run: mvn -B clean package -DskipTests
+
+      - name: Log in to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.DOCKERHUB_REPO }}:${{ env.TAG }}
+            ${{ env.DOCKERHUB_REPO }}:latest
