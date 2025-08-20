@@ -11,7 +11,7 @@ pipeline {
         stage('Build with Maven') {
             steps {
                 sh '''
-                  mvn clean package -DskipTests
+                  mvn clean package -DskipTests -Dmaven.compiler.source=17 -Dmaven.compiler.target=17
                 '''
             }
         }
