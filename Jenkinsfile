@@ -1,44 +1,54 @@
-Pipeline - Stage 1 & Stage 2 & Stage 3
---------------------------------------------------
 pipeline {
     agent any
+    tools { maven 'maven3' }
 
-    tools {
-        maven 'maven s/w'
+    environment {
+        IMAGE_NAME = "netflix"
     }
 
     stages {
-        stage('Clone the Code') {
+        stage('Clone') {
             steps {
-                git credentialsId: 'git-creds', url: 'https://github.com/Yathishnagaraj/Netflix-CICD.git'
+                git url: 'https://github.com/Yathishnagaraj/Netflix-CICD.git'
             }
         }
+
         stage('Maven Build') {
             steps {
                 script {
-                    def mavenHome = tool name: 'maven s/w', type: 'maven'
-                    def mavenCMD = "${mavenHome}/bin/mvn"
-                    // Run Maven build with parallel execution and skip tests if needed
-                    sh "${mavenCMD} clean package -T 1C -DskipTests"
+                    def mvnHome = tool name: 'maven3', type: 'maven'
+                    sh "${mvnHome}/bin/mvn clean package -DskipTests"
                 }
             }
         }
-        stage('Deployment Stage') {
+
+        stage('Docker Build & Push') {
             steps {
-                script {
-                    // Ensure target directory exists before copying
-                    sh 'ls -l target'
-                    // Deploy the WAR file to Tomcat
-                    sh 'sudo cp target/NETFLIX-1.2.2.war /root/apache-tomcat-9.0.93/webapps'
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh '''
+                      echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                      IMAGE=$DOCKER_USER/$IMAGE_NAME:$BUILD_NUMBER
+                      docker build -t $IMAGE .
+                      docker push $IMAGE
+                    '''
                 }
+            }
+        }
+
+        stage('Run Container') {
+            steps {
+                sh '''
+                  docker rm -f netflix || true
+                  IMAGE=$DOCKER_USER/$IMAGE_NAME:$BUILD_NUMBER
+                  docker run -d --name netflix -p 8080:8080 $IMAGE
+                '''
             }
         }
     }
 
     post {
         always {
-            echo 'Cleaning up after build...'
-            cleanWs() // Clean workspace after build
+            cleanWs()
         }
     }
 }
