@@ -20,7 +20,7 @@ pipeline {
 
         stage('Docker Build & Push') {
             steps {
-                withCredentials([string(credentialsId: 'dockerhub-cred', variable: 'DOCKER_PASS')]) {
+                withCredentials([string(credentialsId: 'dockerhub-creds', variable: 'DOCKER_PASS')]) {
                     sh '''
                         echo $DOCKER_PASS | docker login -u yathish047 --password-stdin
                         docker build -t $IMAGE .
